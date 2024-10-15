@@ -1,0 +1,299 @@
+---
+title: Métodos Estadísticos I. <a href="http://www.ulpgc.es"><img src="https://www.ulpgc.es/sites/default/files/ArchivosULPGC/identidad-corporativa/NuevoLogo/eii_hc_0.png" title="Universidad de Las Palmas de Gran Canaria" class="img-fluid" alt="ULPGC" width="30%"></a>
+subtitle: Ejercicio 4. Practica Tema 1
+author:
+  - name: Francisco José Vazquez Polo
+    orcid: 0000-0002-0632-6138
+    email: francisco.vazquezpolo@ulpgc.es
+    affiliations:
+      - name: Universidad de las Palmas de Gran Canaria
+        url: https://www.ulpgc.es
+  - name: Christian González Martel
+    orcid: 0000-0003-1081-0843
+    email: christian.gonzalez@ulpgc.es
+format:
+  html:
+    toc: true
+    toc-location: right
+    toc-depth: 2
+engine: knitr
+filters:
+  - webr
+
+---
+:::{.callout-note}
+Este ejercicio está implementado usando la tecnología [web-r](https://docs.r-wasm.org/webr/latest/) que permite la ejecución de código R directamente en el navegador.
+
+Se le anima al alumno a 'jugar de forma interactiva' con el código, ejecutando cada bloque de codigo o incluso modificarlo y ejecutar su versión del código.
+:::
+
+# Enunciado 
+
+Después de un vertido en una zona acotada de una playa, se recogieron datos de 180 peces que aparecieron muertos en la orilla.
+
+| Longitud (en milimetros) | 1 − 19 | 20 - 39 | 40 - 59 | 60 - 79 | 80 - 99 |
+|--------------------------|:------:|:-------:|:-------:|:-------:|:-----:|
+| Frecuencia               |   38   |   31    |   59    |   45    |   7   |
+
+
+1. Usando la tabla anterior, calcular media, varianza y desviación estándar.
+2. Calcular la mediana de estos datos y comparar con la media. Interpretar.
+
+# Solución
+Se crean los vectores apropiados con los datos de la tabla.
+```{webr-r}
+#| autorun: true
+  longitud  <-  c("1 - 19","20 - 39", "40 - 59", "60 - 79", "80 - 99")
+  ni  <- c(38,31,59,45,7)
+  lim_inf   <-  c(1, 20, 40, 60, 80)
+  lim_sup  <-  c(19, 39, 59, 79, 99)
+  marca_clase  <-  (lim_sup+lim_inf)/2 
+  N  <- sum(ni)
+```
+
+## Media
+
+Calculamos la media como:
+$$\bar{x} = \frac{1}{n}\sum^K_{i=1}f_im_i$$
+siendo $K$ el número de clases, $f_i$ la frecuencia de cada clase $i=1,\ldots,K$, $m_i$ la marca de cada clase, y $n = \sum^K_{i=1}f_i$ el número total de observaciones, recogidas en las variables `ni, marcas_clase` y `N`, respectivamente. 
+
+
+```{webr-r}
+media_1  <-  sum(marca_clase*ni)/N
+
+media_1
+```
+
+Por otro lado, podríamos crear nuestra propia función. De esta manera para futuros ejercicios sólo tendríamos que aplicar la función y no acordarnos de la definición.
+
+```{webr-r}
+media_agrupada  <- function(marca_clase, freq){
+  N  <- sum(freq)
+  media  <-  sum(marca_clase*freq)/N
+}
+
+media_1 <- media_agrupada(marca_clase, ni)
+
+media_1
+```
+
+## Varianza muestral y desviacion típica
+
+
+Calculamos la varianza muestral como:
+
+$$s^2 = \frac{1}{n-1}\sum^k_{i=1}f_i(m_i-\bar{x})^2$$
+siendo $K$ el número de clases, $f_i$ la frecuencia de cada clase $i=1,\ldots,K$, $m_i$ la marca de cada clase, $n = \sum^K_{i=1}f_i$ el número total de observaciones y $\bar{x}$ la media muestral, recogidas en las variables `ni, marcas_clase`, `N` y `media_1`, respectivamente. 
+
+Sería equivalente a $s^2 = \frac{\sum{m_i^2f_i}}{n-1}-\frac{n}{n-1}\bar{x}^2$
+
+La desviación típica se calcualría como la raíz cuadrada `sqrt()` de la varianza muestral.
+
+
+```{webr-r}
+var_muestral_1  <-  sum((marca_clase - media_1)^2*ni)/(N-1)
+var_muestral_1  <- sum(marca_clase^2*ni)/(N-1)-N*media_1^2/(N-1)
+sd_1  <- sqrt(var_muestral_1)
+
+c("Varianza muestral" = var_muestral_1, "Desviación típica" = sd_1 )
+```
+
+Por otro lado, podríamos crear nuestra propia función. De esta manera para futuros ejercicios sólo tendríamos que aplicar la función y no acordarnos de la definición.
+
+```{webr-r}
+var_muestral_agrupada  <- function(marca_clase, freq){
+  N  <- sum(freq)
+  var_muestral  <-  sum((marca_clase - media_1)^2*ni)/(N-1)
+}
+
+var_muestral_1 <- var_muestral_agrupada(marca_clase, ni)
+sd_1  <- sqrt(var_muestral_1)
+c("Varianza muestral" = var_muestral_1, "Desviacuion típica" = sd_1 )
+```
+
+
+
+## Mediana
+
+En este caso buscamos el dato que deja a su izquierda y su derecha el 50% de la muestra. Podríamos buscar la clase que consigue esto y quedarnos con su marca de clase. Con datos agrupados lo haríamos de la siguiente manera. Tendríamos que calcular primero las frecuencias acumuladas y buscar la clase donde esté el $N*0.5$
+
+```{webr-r}
+ni_acum  <- cumsum(ni)
+index_clase_mediana  <- min(which(ni_acum >= N*0.5)) 
+marca_clase[index_clase_mediana]
+
+```
+Sin ewbargo, podemos ajustarlo un poco mejor mediante la siguiente expresión:
+$$M = L + \frac{w}{f_m}(0.5N-F_b)$$
+donde $L$ es el extremo inferior de la clase que contiene a la mediana, $n$ es la frecuencia total, $F_b$ es la frecuencia acumulada de la calse aterior a que contiene a la mediana, $f_m$ es la frecuencia de la clase que contiene a la mediana y $w$ es la longitud del intervalo que contiene a la mediana
+
+$f_m$ la podemos obtener de la variable `ni` y $n$ está recogido en la variable `N`. Debemos de calcular el resto de argumentos de la expresión 
+
+- L
+
+`cumsum` es una fucnión recursiva que suma las frecuencias 
+antero
+```{webr-r}
+ni_acum  <- cumsum(ni)
+index_clase_mediana  <- min(which(ni_acum >= N/2)) 
+L  <- lim_inf[index_clase_mediana]
+L
+```
+
+- F_b
+
+```{webr-r}
+F_b  <- ni_acum[index_clase_mediana-1]
+F_b
+```
+
+- f_m
+
+```{webr-r}
+f_m  <- ni[index_clase_mediana]
+f_m
+```
+- w
+
+Calculamos la longitud o amplitud cada intervalo para quúdarnos con la clase mediana, que recordemos que su posición estaba recgida en `index_clase_mediana`
+
+```{webr-r}
+w_i  <- lim_sup-lim_inf
+w  <- w_i[index_clase_mediana]
+w
+```
+
+Finalmente la mediana sería
+
+```{webr-r}
+mediana_1  <-   L + w/f_m*(N*0.5 - F_b)
+# Muestra resultados en pantalla
+mediana_1
+```
+
+
+
+```{webr-r}
+
+# Para mostrar todas las medidas calculadas en pantalla
+c("Media" = media_1, "Varianza" = var_muestral_1, "Desviación típica" = sd_1, "Mediana" = mediana_1)
+```
+
+
+Podemos desarrollar una función personalizada. Así, en ejercicios futuros, solo necesitaremos usar la función sin recordar su definición.
+
+```{webr-r}
+mediana_agrupada  <- function(lim_inferior, lim_superior, ni){
+  N  <- sum(ni)
+  ni_acum  <- cumsum(ni)
+  index_clase_mediana  <- min(which(ni_acum >= N*0.5)) 
+  L  <- lim_inf[index_clase_mediana]
+  F_b  <- ni_acum[index_clase_mediana-1]
+  f_m  <- ni[index_clase_mediana]
+  w_i  <- lim_sup-lim_inf
+  w  <- w_i[index_clase_mediana]
+  mediana_1  <-   L + w/f_m*(N*0.5 - F_b)
+  mediana_1
+}
+
+mediana_1  <- mediana_agrupada(lim_inf, lim_sup, ni)
+mediana_1
+```
+
+
+:::{.callout-warning}
+Hay que hacer notar que esta función podría fallar. Como programadores deberíamos asegurarnos que el usuario introduzca correctamente los argumentos obligatorios, que sean del tipo correcto (en este caso numéricos) y que los tres coincidan en longitud. Además esta función, tal cual está escrita daría error si la mediana está en la primera clase ya que en ese caso `index_clase_mediana -1` daría igual a 0 y al calcular el índice de `F_b` daría error ya que no puede seleccionar el dato que ocupa la posición 0.
+:::
+
+:::{.callout-tip}
+Te animo a que investigues para poder dar solución a estos posibles problemas, sobre todo el último que no depende de la introducción de los argumentos sino de los datos en sí, probando con condicionales.
+:::
+
+:::{.callout-tip}
+También te animo a que modifiques la función para que calcule cualquier percentil introduciendo un nuevo argumento en la funcion `q` que sea un valor entre 0 y 1 y modificar el `index_clase_mediana` y la expresión para el cálculo del percentil, que ya no sería solo para la mediana (0.5) 
+:::
+
+
+# Solución alternativa
+
+Desagrupando y calculando los estadísticos de los datos desagrupados
+
+:::{.callout-important}
+En clase y en las pruebas este **NO** es el método que usaremos ya que NO se corresponde con la definición dada en teoría. Se muestra como metodo *alternativo* para los cálculos de media, varianza y mediana de datos agrupados.
+:::
+
+## Media
+
+Repitiendo la marca de clase $m_i$ un numero $f_i$ veces tendríamos los datos desagrupados, es decir, los 180 datos.
+```{webr-r}
+datos_desagrupados  <- c(rep(marca_clase,ni))
+datos_desagrupados
+```
+
+Sin embargo, notarás que estamos haciendo una estimación del tamaño de los peces ya que, por ejemplo, sabemos que del grupo 1-19 cm. hemos recogido 38 peces pero no su medida exacta. La estimamos dándole a los 38 peces el valor de la marca de clase. 
+
+```{webr-r}
+media_1_des  <- mean(datos_desagrupados)
+media_1_des
+c("Media agrupada" = media_1, "Media desagrupada" = media_1_des)
+```
+Como ves la media de los datos agrupados y desagrupados coinciden.
+
+## Varianza muestral y desviacion típica
+
+```{webr-r}
+var_muestral_des_1  <- var(datos_desagrupados)
+sd_des_1  <- sqrt(var_1)
+c("Varianza muestral agrupada" = var_muestral_1, "Varianza muestral desagrupada" = var_muestral_des_1)
+c("Desviacion típica agrupada" = sd_1, "Desviacion típica desagrupada" = sd_des_1)
+```
+
+## Mediana
+
+En este caso, **NO** va a coincidir la mediana calculada por este método con la obtenida mediante la expresión por las suposiciones que hacemos de los datos desagrupados, que son que todos los peces que se medían de cada clase coincidían con la marca de clase.
+
+```{webr-r}
+median(datos_desagrupados)
+```
+
+que no concide con la mediana calculada con los datos agrupados (46.76271) y ocurre porque la aproximación de la mediana para datos agrupados parte de la suposicion que los datos están repartidos de forma uniforme por cada intervalo.
+
+Por lo que para obtener una medida más próxima pdemos simular los datos siguiendo esa distribución uniforme `runif` (como no tenemos ni de las medidas de los peces suponemos que todas las medidas son iguales de problable dentro del intervalo)
+
+```{webr-r}
+#| lst-label: lst-sim
+#| lst-cap: simulación con datos uniformes
+
+sim  <- c(
+  runif(ni[1], min= lim_inf[1], max = lim_sup[1]),
+  runif(ni[2], min= lim_inf[2], max = lim_sup[2]),
+  runif(ni[3], min= lim_inf[3], max = lim_sup[3]),
+  runif(ni[4], min= lim_inf[4], max = lim_sup[4]),
+  runif(ni[5], min= lim_inf[5], max = lim_sup[5])
+)
+
+sim 
+```
+
+```{webr-r}
+
+mediana_des_1 <- median(sim)
+c("mediana datos agrupados" = mediana_1, "Mediana datos desagrupados" = mediana_des_1)
+```
+
+Como puedes observar el valor de la mediana dada por esta simulación es muy próximo al dado por la aproximación de datos agrupados. 
+
+::: {.callout-tip}
+Habría una forma de simplificar la expresión @lst-sim aunque requeriría de un uso más avanzado de R. Se podría poner en un bucle con un `for` o utilizar las funciones implementadas en R par arealizacion de bucles, entre ellas, [`mapply`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/mapply) que reraliza un blucle aplicando una función, en nuestro caso `runif` sobre los elementos de varios argumentos.
+
+```{webr-r}
+
+sim <- unlist(mapply(function(n, min, max) runif(n, min, max), ni, lim_inf, lim_sup))
+
+sim
+
+median(sim)
+```
+
+:::
+
